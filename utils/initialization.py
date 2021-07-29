@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation as R
 
 
 class Mosaic:
-    def __init__(self, dir_path, md_path, resize_factor=.5, cnt_utmy=None, cnt_utmx=None, verbose=True):
+    def __init__(self, dir_path, md_path, resize_factor=1, cnt_utmy=None, cnt_utmx=None, verbose=True):
         self.md_dict = get_metadata(md_path)
         sensor_dim, focal_len = get_camera_specs(self.md_dict["model"][0])
 
