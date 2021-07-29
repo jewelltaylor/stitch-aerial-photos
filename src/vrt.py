@@ -1,4 +1,5 @@
 import os
+import cv2
 import tqdm
 import glob
 import warnings
@@ -18,7 +19,7 @@ from .utils import (create_batch_symlink,
                     prepare_folder)
 from .graph import get_links, build_graph, get_subgraphs
 from .optim import optimize
-from .preprocess import preprocess
+from .preprocess import preprocess, show_preprocess
 from .georef import mosaic_to_individual, georef_by_gcp
 
 
@@ -99,7 +100,7 @@ class VirtualRaster(object):
             lambda x: os.path.isfile(x['img_file']), axis=1)
         # drop non existent files
         if verbose:
-            for f in df.loc[~file_exists, 'img_file'].tolist():
+            for f in df.loc[~file_exists, 'img_file'].values.tolist():
                 print('No such file: {}'.format(f))
         df = df.loc[file_exists, :]
         # query and store height and width from img image metadata
@@ -119,6 +120,10 @@ class VirtualRaster(object):
         df.loc[:, 'height'] = height
         # sort and index
         df = df.sort_values(by=index_cols).set_index(index_cols)
+        print("\n")
+        print(df[['x_init', 'y_init', 'theta_init', 'scale_init']])
+        print(gpd.GeoDataFrame(df))
+        print("\n")
 
         # return virtual raster object
         return cls(gpd.GeoDataFrame(df), img_dir=img_dir, wld_dir=wld_dir,
@@ -204,13 +209,13 @@ class VirtualRaster(object):
             lambda x: convert_affine(x['world_trans'], to='world_file'),
             axis=1).tolist()
         if wld_dir is None:
-            wld_files = df.loc[:, 'wld_file'].tolist()
+            wld_files = df.loc[:, 'wld_file'].values.tolist()
         else:
             # generate world file paths
             wld_files = df.apply(
                 lambda x: os.path.join(wld_dir,
                                        x['file_id'] + self.wld_suffix),
-                axis=1).tolist()
+                axis=1).values.tolist()
         # prepare folders
         prepare_folder(wld_files)
 
@@ -316,33 +321,46 @@ class VirtualRaster(object):
         if mode == 'stack':
             outputs = []
         elif mode in ['overlay', 'composite']:
-            outputs = np.zeros((output_height, output_width),
+            outputs = np.zeros((3, output_height, output_width),
                                dtype=np.float)
             if mode == 'overlay':
-                alphas = np.zeros((output_height, output_width),
+                alphas = np.zeros((3, output_height, output_width),
                                   dtype=bool)
             if mode == 'composite':
-                counts = np.zeros((output_height, output_width),
+                counts = np.zeros((3, output_height, output_width),
                                   dtype=np.uint32)
         df_iterrows = tqdm.tqdm(df.iterrows()) if verbose else df.iterrows()
         # iterate over images
         for i, row in df_iterrows:
             # load images with the preprocess function
-            img, trans_relative = preprocess(file=row['img_file'], **kwargs)
+
+            # make sure that img does not have 0's (reserved for nodata)
+
+            img, trans_relative = show_preprocess(file=row['img_file'], **kwargs)
+
+
             # make sure that img does not have 0's (reserved for nodata)
             img = np.clip(img, 1, None)
-            # reproject onto the new raster
-            output = np.zeros((output_height, output_width),
-                              dtype=np.uint8)
-            rasterio.warp.reproject(
-                source=img,
-                destination=output,
-                src_transform=row['world_trans'] * trans_relative,
-                src_crs=self.crs,
-                src_nodata=None,
-                dst_transform=dst_transform,
-                dst_crs=self.crs,
-                dst_nodata=0)
+            output = []
+
+            for j,band in enumerate(img):
+                print("Band Shape", band.shape)
+                dest = np.zeros((output_height, output_width))
+
+                rasterio.warp.reproject(
+                    source=band,
+                    destination=dest,
+                    src_transform=row['world_trans'] * trans_relative,
+                    src_crs=self.crs,
+                    src_nodata=None,
+                    dst_transform=dst_transform,
+                    dst_crs=self.crs,
+                    dst_nodata=0)
+
+                output.append(dest)
+
+            output = np.array(output)
+
             if mode == 'stack':
                 outputs.append(output)
             elif mode in ['overlay', 'composite']:
@@ -365,9 +383,11 @@ class VirtualRaster(object):
         if mode == 'stack':
             # stack bands together as a numpy array
             outputs = np.array(outputs)
+
+
         return np.round(outputs).astype(np.uint8), dst_transform
 
-    def build_links(self, f, graph=None, verbose=False):
+    def build_links(self, f, graph=None, show_file=None, verbose=False):
         """Build links between nodes.
 
         Args:
@@ -387,7 +407,7 @@ class VirtualRaster(object):
                  if i < j and (i, j) not in self.links.keys()]
 
         # estimate transforms for every pair
-        result = [((i, j), f(i_file, j_file))
+        result = [((i, j), f(i_file, j_file, show_file="{}/{}_{}".format(show_file, str(i), str(j))))
                   for i, j, i_file, j_file in
                   tqdm.tqdm(pairs, desc='Building links.')]
 
@@ -403,7 +423,7 @@ class VirtualRaster(object):
         if verbose:
             print('Links: ', self.links)
 
-    def build_graph_links(self, f, position_cols=['x_init', 'y_init'],
+    def build_graph_links(self, f, position_cols=['x_init', 'y_init'], show_file = None,
                           **kwargs):
         """Builds graph and corresponding links.
 
@@ -417,7 +437,7 @@ class VirtualRaster(object):
             **kwargs: passed to src.graph.build_graph
         """
         indices = (self.df.groupby('swath_id')
-                   .apply(lambda g: g.index.tolist()).tolist())
+                   .apply(lambda g: g.index.tolist()).values.tolist())
         if kwargs['method'] == 'across':
             assert position_cols is not None
             kwargs['positions'] = (
@@ -429,7 +449,7 @@ class VirtualRaster(object):
         for k in graph.keys():
             self.graph[k] += graph[k]
         # build links
-        self.build_links(f)
+        self.build_links(f, show_file=show_file)
 
     def global_optimize(self, **kwargs):
         """Globally optimize to fit all images together.
@@ -442,12 +462,12 @@ class VirtualRaster(object):
         iters, losses, affines = optimize(
             nodes=self.df.index.tolist(),
             links=get_links(graph=self.graph, links=self.links),
-            thetas_init=self.df.loc[:, 'theta_init'].tolist(),
-            scales_init=self.df.loc[:, 'scale_init'].tolist(),
-            xs_init=self.df.loc[:, 'x_init'].tolist(),
-            ys_init=self.df.loc[:, 'y_init'].tolist(),
-            width=self.df.loc[:, 'width'].tolist(),
-            height=self.df.loc[:, 'height'].tolist(),
+            thetas_init=self.df.loc[:, 'theta_init'].values.tolist(),
+            scales_init=self.df.loc[:, 'scale_init'].values.tolist(),
+            xs_init=self.df.loc[:, 'x_init'].values.tolist(),
+            ys_init=self.df.loc[:, 'y_init'].values.tolist(),
+            width=self.df.loc[:, 'width'].values.tolist(),
+            height=self.df.loc[:, 'height'].values.tolist(),
             **kwargs)
         # update transform
         self.df.loc[:, 'relative_trans'] = pd.Series(
@@ -506,3 +526,4 @@ class VirtualRaster(object):
                 if x['world_trans'] is not None else
                 shapely.geometry.Polygon([])),
             axis=1, result_type='reduce')
+

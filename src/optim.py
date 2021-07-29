@@ -15,6 +15,7 @@ with warnings.catch_warnings():
 
 # to ensure reproducibility
 torch.manual_seed(0)
+np.set_printoptions(precision=4)
 
 
 def get_distribution(tensor, k=1):
@@ -108,13 +109,14 @@ def optimize(nodes, links, width, height,
                 fc='darkseagreen', ec='darkseagreen')
             # annotate image ids
             ax.annotate(
-                s='{}-{}'.format(*node), xy=(x, y), fontsize=7)
+                s='{}-{}-{}node'.format(str(int(x)), str(int(y)), str(node)), xy=(x, y), fontsize=7)
         # iterate over links
         for (i, j), trans in links.items():
             # plot links
             ax.plot([xs_init[nodes.index(i)], xs_init[nodes.index(j)]],
                     [ys_init[nodes.index(i)], ys_init[nodes.index(j)]],
                     'grey' if trans is None else 'hotpink')
+        fig.savefig("{}/graph_init.png".format(logdir))
         writer.add_figure('graph_init', fig, global_step=0)
 
     if output_iter is None:
@@ -135,22 +137,26 @@ def optimize(nodes, links, width, height,
             affines_j_idx.append(nodes.index(j_idx))
             j_width = width[nodes.index(j_idx)]
             j_height = height[nodes.index(j_idx)]
+            i_width = width[nodes.index(i_idx)]
+            i_height = height[nodes.index(i_idx)]
             # points: four corners of the j image
             pts_tensor.append(torch.tensor([
                 [0, 0, 1],
                 [0, j_height, 1],
                 [j_width, 0, 1],
                 [j_width, j_height, 1]], dtype=torch.float).T)
+
     if len(rel_true_tensor) == 0:
         raise ValueError('No links available for optimization.')
     rel_true_tensor = torch.stack(rel_true_tensor)  # [n_links, 3, 3]
     pts_tensor = torch.stack(pts_tensor)  # [n_links, 3, n_pts]
-
+   
     # convert to tensor
     width = torch.tensor(width, dtype=torch.float)
     height = torch.tensor(height, dtype=torch.float)
     # initialize leaf nodes
     thetas = torch.tensor(thetas_init, dtype=torch.float, requires_grad=True)
+    print(thetas_init)
     scales = torch.tensor(scales_init, dtype=torch.float, requires_grad=True)
     xs = torch.tensor(xs_init, dtype=torch.float, requires_grad=True)
     ys = torch.tensor(ys_init, dtype=torch.float, requires_grad=True)
@@ -193,20 +199,28 @@ def optimize(nodes, links, width, height,
         # extract i, j affines to estimate relative affines
         affines_i = affines[affines_i_idx, ...]  # [n_links, 3, 3]
         affines_j = affines[affines_j_idx, ...]  # [n_links, 3, 3]
+
+        
         # get estimated relative affines
         rel_est_tensor = torch.matmul(
             torch.inverse(affines_i), affines_j)  # [n_links, 3, 3]
         # compute loss on each link (between true/estimated relative affines)
         # loss is the mean squared distance between points
         # in the true versus estimated relative affines
+
+        
+
         losses = (  # [n_links, 3, n_pts]
             (torch.matmul(rel_est_tensor, pts_tensor) -
              torch.matmul(rel_true_tensor, pts_tensor)) ** 2
         ).sum(axis=1).mean(axis=1)  # -> [n_links, n_pts] -> [n_links,]
         loss = losses.mean()  # -> [1,]
+
         if logging:
             if k % 500 == 0:
-                writer.add_scalar('loss/mean', loss.item(), k)
+                writer.add_text("rel_true_tensor", str(rel_true_tensor[0]))
+                writer.add_text("rel_est_tensor", str(rel_est_tensor[0]))
+                writer.add_text("pts_tesnor",  str(pts_tensor))
                 writer.add_scalars(
                     'affines/thetas', get_distribution(thetas), k)
                 writer.add_scalars(
@@ -229,7 +243,7 @@ def optimize(nodes, links, width, height,
                     ax.scatter(x, y, color='dimgray', marker='+')
                     # annotate image ids
                     ax.annotate(
-                        s='{}-{}'.format(*node), xy=(x, y), fontsize=7)
+                        s='{}-{}-{}node'.format(str(int(x)), str(int(y)), str(node)), xy=(x, y), fontsize=7)
                 # iterate over links
                 for link_idx, link_loss in enumerate(losses):
                     # plot links, color corresponds to loss on link
@@ -244,17 +258,23 @@ def optimize(nodes, links, width, height,
                 writer.add_figure(
                     'link_loss_init' if k == 0 else 'link_loss',
                     fig, global_step=k)
+
+                if k % 1000 == 0:
+                    fig.savefig("{}/link_loss_{}.png".format(logdir, str(k)))
+
                 # print links of largest loss
-                link_losses, link_idxs = torch.topk(losses, k=5, largest=True)
+                link_losses, link_idxs = torch.topk(losses, k=1, largest=True)
                 for i, (link_idx, link_loss) in enumerate(zip(
                         link_idxs, link_losses)):
+                    """
                     writer.add_text(
                         'loss_topk{}/{}'.format('_init' if k == 0 else '', i),
                         'Loss: {} between {}-{} and {}-{}'.format(
                             link_loss,
-                            *nodes[affines_i_idx[link_idx]],
-                            *nodes[affines_j_idx[link_idx]]),
+                            str(nodes[affines_i_idx[link_idx]]),
+                            str(nodes[affines_j_idx[link_idx]])),
                         global_step=k)
+                    """
         if verbose:
             if (k + 1) % 200 == 0:
                 print('Iter: {}; Loss: {:.3f}'.format(k, loss.item()))
@@ -278,5 +298,8 @@ def optimize(nodes, links, width, height,
 
     if logging:
         writer.close()
-
+        
+    print("Thetas: ", str(thetas))
+    
     return output_iter, output_loss, output_affines
+
