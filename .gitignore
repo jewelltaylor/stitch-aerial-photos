@@ -4,7 +4,8 @@ tmp
 __pycache__/
 .ipynb_checkpoints/
 **/._*
-output/*.gif
-cache/**/*.jpg
-cache/**/*.tif
-data/init.csv
+cache
+data
+results
+int_output
+logs

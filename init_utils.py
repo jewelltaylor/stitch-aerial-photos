@@ -68,23 +68,26 @@ class Mosaic:
                 self.md_dict["gimbal roll"],
                 self.md_dict['relative altitude'],
                 utm_cood_list):
+
             flight_rot = R.from_euler("ZYX", [flight_yaw, flight_pitch, flight_roll], degrees=True)
             cam_rot = R.from_euler("ZYX", [cam_yaw, cam_pitch + 90, cam_roll], degrees=True)
-
-            refl_mat = R.from_matrix(np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]]))
+            refl_mat = R.from_matrix(np.array([[1, 0, 0],
+                                               [0, -1, 0],
+                                               [0, 0, 1]]))
 
             total_rot = refl_mat * flight_rot * cam_rot
 
             vec = total_rot.apply([0, 0, alt])
-
-            res = LinePlaneCollision(np.array([0, 0, 1]), np.array([0, 0, 0]), np.array(vec), np.array([0, 0, alt]))
-            print(res)
+            res = LinePlaneCollision(np.array([0, 0, 1]),
+                                     np.array([0, 0, 0]),
+                                     np.array(vec), np.array([0, 0, alt]))
 
             utmx = utm_cood[0] + res[0]
             utmy = utm_cood[1] + res[1]
 
             utmx_og_list.append(utm_cood[0])
             utmy_og_list.append(utm_cood[1])
+
             utmx_list.append(utmx)
             utmy_list.append(utmy)
 
