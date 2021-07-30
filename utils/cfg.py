@@ -25,8 +25,8 @@ def update_cfg(cfg,
                output_size=(4000, 4000),
                output_mode="overlay",
                hessian_threshold=100,
-               optim_n_iter=10000,
-               output_iter=[0, 2000, 4000, 6000, 8000, 9999],
+               optim_n_iter=5000,
+               output_iter=[0, 1000, 2000, 3000, 4000, 4999],
                min_inliers=15
                ):
     img_dir_name = img_dir_path.split("/")[-1]

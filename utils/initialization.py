@@ -5,11 +5,12 @@ import cv2
 import numpy as np
 from math import radians, sin, cos, tan
 from scipy.spatial.transform import Rotation as R
+from utils.metadata import get_metadata, get_camera_specs, get_img_list
 
 
-class Mosaic:
-    def __init__(self, dir_path, md_path, resize_factor=1, cnt_utmy=None, cnt_utmx=None, verbose=True):
-        self.md_dict = get_metadata(md_path)
+class PoseInit:
+    def __init__(self, dir_path, resize_factor=1, cnt_utmy=None, cnt_utmx=None, verbose=True):
+        self.md_dict = get_metadata(dir_path)
         sensor_dim, focal_len = get_camera_specs(self.md_dict["model"][0])
 
         self.sensor_dim = sensor_dim
@@ -18,7 +19,7 @@ class Mosaic:
         self.cnt_utmy = cnt_utmy
         self.cnt_utmx = cnt_utmx
 
-        self.img_list = get_img_list(dir_path, self.md_dict["name"], resize_factor)
+        self.img_list = get_img_list(dir_path, self.md_dict["name"])
         self.img_shape = self.img_list[0].shape
 
         utmx_og_list, utmy_og_list, utmx_list, utmy_list, utm_zone_number, utm_zone_letter = self.get_utm_cood()
@@ -239,3 +240,14 @@ class Mosaic:
     def get_img_shape(self):
         return self.img_shape
 
+
+def LinePlaneCollision(planeNormal, planePoint, rayDirection, rayPoint, epsilon=1e-6):
+ 
+    ndotu = planeNormal.dot(rayDirection)
+    if abs(ndotu) < epsilon:
+        raise RuntimeError("no intersection or line is within plane")
+ 
+    w = rayPoint - planePoint
+    si = -planeNormal.dot(w) / ndotu
+    Psi = w + si * rayDirection + planePoint
+    return Psi
