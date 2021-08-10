@@ -92,6 +92,8 @@ def get_camera_specs(model):
     #Mavic Mini
     if model == "FC7203":
         return (.63, .47), .449
+    elif model == "FC330":
+        return (1.32, .88), .88
     else:
         raise ValueError("Unrecognized model number")
 

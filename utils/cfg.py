@@ -1,6 +1,7 @@
 import os
+import cv2
 import yaml
-
+import math 
 
 def make_dirs(name):
     cache_dir = "cache/cache_" + name
@@ -25,10 +26,15 @@ def update_cfg(cfg,
                output_size=(4000, 4000),
                output_mode="overlay",
                hessian_threshold=100,
-               optim_n_iter=5000,
-               output_iter=[0, 1000, 2000, 3000, 4000, 4999],
-               min_inliers=15
+               optim_n_iter=12000,
+               output_iter=[0, 2000, 4000, 6000, 8000, 10000, 11999],
+               min_inliers=15, 
+               name
                ):
+       
+    img = cv2.imread([f"{img_dir_path}/{f}" for f in os.listdir(img_dir_path) if ".jpg" in f or ".JPG" in f][0])
+    img_height, img_width = img.shape[0], img.shape[1]
+    
     img_dir_name = img_dir_path.split("/")[-1]
     cache_dir_path, logs_dir_path, int_output_dir_path, results_dir_path = make_dirs(img_dir_name)
 
@@ -52,5 +58,12 @@ def update_cfg(cfg,
     cfg['optim_n_iter'] = optim_n_iter
     cfg["min_inliers"] = min_inliers
     cfg['output_iter'] = output_iter
+    
+    #Configure Image Height and Width
+    cfg["img_height"] = img_height 
+    cfg["img_width"] = img_width 
+    
+    #Configure Max Distance
+    cfg["max_dist"] = math.sqrt(img_height ** 2 + img_width ** 2) 
 
     return cfg

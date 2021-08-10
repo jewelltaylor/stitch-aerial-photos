@@ -48,7 +48,8 @@ def run(cfg):
         f=s.stitch_pair,
         method='all',
         show_file=cfg["show_file"],
-        verbose=True)
+        verbose=True,
+        max_dist = cfg["max_dist"])
 
     print(v.links)
 

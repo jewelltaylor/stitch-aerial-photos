@@ -45,6 +45,8 @@ def build_graph(indices, method,
     Returns:
         collections.defaultdict(list): symmetric graph
     """
+    
+    print("MAX_DIST", max_dist)
     # initialize the graph
     graph = collections.defaultdict(list)
     if method == 'within':
