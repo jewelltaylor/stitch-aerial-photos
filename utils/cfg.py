@@ -22,6 +22,7 @@ def make_dirs(name):
 
 def update_cfg(cfg,
                img_dir_path,
+               name,
                output_bounds=(-5000, -5000, 5000, 5000),
                output_size=(4000, 4000),
                output_mode="overlay",
@@ -29,14 +30,13 @@ def update_cfg(cfg,
                optim_n_iter=12000,
                output_iter=[0, 2000, 4000, 6000, 8000, 10000, 11999],
                min_inliers=15, 
-               name
                ):
        
     img = cv2.imread([f"{img_dir_path}/{f}" for f in os.listdir(img_dir_path) if ".jpg" in f or ".JPG" in f][0])
     img_height, img_width = img.shape[0], img.shape[1]
     
     img_dir_name = img_dir_path.split("/")[-1]
-    cache_dir_path, logs_dir_path, int_output_dir_path, results_dir_path = make_dirs(img_dir_name)
+    cache_dir_path, logs_dir_path, int_output_dir_path, results_dir_path = make_dirs(name)
 
     # Configure Paths
     cfg["in_dir_images"] = img_dir_path
