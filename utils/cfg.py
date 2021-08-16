@@ -4,10 +4,10 @@ import yaml
 import math 
 
 def make_dirs(name):
-    cache_dir = "cache/cache_" + name
-    logs_dir = "logs/logs_" + name
-    int_output_dir = "int_output/int_output_" + name
-    results_dir = "results/results_" + name
+    cache_dir = f"cache/{name}" 
+    logs_dir = f"logs/{name}" 
+    int_output_dir = f"int_output/{name}"
+    results_dir = f"results/{name}"
 
     dirs = [cache_dir, logs_dir, int_output_dir, results_dir]
 
@@ -30,6 +30,7 @@ def update_cfg(cfg,
                optim_n_iter=12000,
                output_iter=[0, 2000, 4000, 6000, 8000, 10000, 11999],
                min_inliers=15, 
+               max_dist = False
                ):
        
     img = cv2.imread([f"{img_dir_path}/{f}" for f in os.listdir(img_dir_path) if ".jpg" in f or ".JPG" in f][0])
@@ -64,6 +65,8 @@ def update_cfg(cfg,
     cfg["img_width"] = img_width 
     
     #Configure Max Distance
-    cfg["max_dist"] = math.sqrt(img_height ** 2 + img_width ** 2) 
-
+    if max_dist:
+        cfg["max_dist"] = math.sqrt(img_height ** 2 + img_width ** 2) 
+    else:
+        cfg["max_dist"] = None
     return cfg

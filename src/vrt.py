@@ -1,5 +1,6 @@
 import os
 import cv2
+import math
 import tqdm
 import glob
 import warnings
@@ -387,7 +388,7 @@ class VirtualRaster(object):
 
         return np.round(outputs).astype(np.uint8), dst_transform
 
-    def build_links(self, f, graph=None, show_file=None, verbose=False):
+    def build_links(self, f, max_dist=None, graph=None, show_file=None, verbose=False):
         """Build links between nodes.
 
         Args:
@@ -407,7 +408,7 @@ class VirtualRaster(object):
                  if i < j and (i, j) not in self.links.keys()]
 
         # estimate transforms for every pair
-        result = [((i, j), f(i_file, j_file, show_file="{}/{}_{}".format(show_file, str(i), str(j))))
+        result = [((i, j), f(i_file, j_file, max_dist=max_dist, dist=self.get_distance(i, j), show_file="{}/{}_{}".format(show_file, str(i), str(j))))
                   for i, j, i_file, j_file in
                   tqdm.tqdm(pairs, desc='Building links.')]
 
@@ -423,7 +424,7 @@ class VirtualRaster(object):
         if verbose:
             print('Links: ', self.links)
 
-    def build_graph_links(self, f, position_cols=['x_init', 'y_init'], show_file = None,
+    def build_graph_links(self, f, position_cols=['x_init', 'y_init'], show_file = None, max_dist=None,
                           **kwargs):
         """Builds graph and corresponding links.
 
@@ -449,7 +450,25 @@ class VirtualRaster(object):
         for k in graph.keys():
             self.graph[k] += graph[k]
         # build links
-        self.build_links(f, show_file=show_file)
+        self.build_links(f, max_dist=max_dist, show_file=show_file)
+    
+    def get_distance(self, i, j): 
+        """
+        Get Distance between image at index i and j
+        I: Index i in df 
+        J: Index j in df
+        """
+        
+        x_i, y_i = self.df["x_init"][i], self.df["y_init"][i]
+        x_j, y_j = self.df["x_init"][j], self.df["y_init"][j]
+        
+        x_dist, y_dist = abs(x_i - x_j), abs(y_i - y_j)
+        
+        
+        dist = math.sqrt(x_dist ** 2 + y_dist ** 2) 
+        
+        return dist
+        
 
     def global_optimize(self, **kwargs):
         """Globally optimize to fit all images together.
@@ -526,4 +545,6 @@ class VirtualRaster(object):
                 if x['world_trans'] is not None else
                 shapely.geometry.Polygon([])),
             axis=1, result_type='reduce')
+        
+     
 

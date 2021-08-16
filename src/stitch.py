@@ -62,7 +62,7 @@ class Stitcher(object):
         # to consider a point as an inlier
         self.ransac_reproj_threshold = ransac_reproj_threshold
 
-    def estimate_affine(self, img0, img1,
+    def estimate_affine(self, img0, img1, max_dist=None, dist=None,
                         verbose=False, show=False, show_file=None):
         """Estimates the affine transformation.
 
@@ -100,7 +100,7 @@ class Stitcher(object):
                 matchColor=color, singlePointColor=color)
             cv.imwrite(show_file + '_match.png', img_match)
         # with all good matches, estimate affine transform w/ RANSAC
-        if len(good) > self.min_inliers:
+        if (len(good) > self.min_inliers) or (max_dist == None) or (dist < max_dist):
             pts0 = np.array([kp0[m.queryIdx].pt for m in good])
             pts1 = np.array([kp1[m.trainIdx].pt for m in good])
             transform, inliers = cv.estimateAffinePartial2D(
