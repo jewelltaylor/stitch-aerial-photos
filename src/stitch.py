@@ -101,6 +101,7 @@ class Stitcher(object):
             cv.imwrite(show_file + '_match.png', img_match)
         # with all good matches, estimate affine transform w/ RANSAC
         if (len(good) > self.min_inliers) or (max_dist == None) or (dist < max_dist):
+            print("max_dist", max_dist, "dist", dist) 
             pts0 = np.array([kp0[m.queryIdx].pt for m in good])
             pts1 = np.array([kp1[m.trainIdx].pt for m in good])
             transform, inliers = cv.estimateAffinePartial2D(

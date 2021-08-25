@@ -19,7 +19,7 @@ def make_symmetric(graph):
 
 def build_graph(indices, method,
                 neighbor_within_swath=None,
-                positions=None, neighbor_across_swath=None, max_dist=None,
+                positions=None, neighbor_across_swath=None,
                 verbose=False):
     """Builds an undirected graph that describes an image's neighbors.
 
@@ -45,8 +45,7 @@ def build_graph(indices, method,
     Returns:
         collections.defaultdict(list): symmetric graph
     """
-    
-    print("MAX_DIST", max_dist)
+
     # initialize the graph
     graph = collections.defaultdict(list)
     if method == 'within':

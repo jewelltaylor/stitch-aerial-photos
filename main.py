@@ -64,6 +64,8 @@ def run(cfg):
         logging=True,
         logdir=cfg["logs_dir"],
         output_iter=cfg['output_iter'])
+    
+
 
     # step 5: visualize static images
     print("Step 5")
@@ -80,6 +82,10 @@ def run(cfg):
         imageio.imwrite(
             os.path.join(cfg['gif_folder'], '{}.jpg'.format(str(i))),
             output)
+    
+        #Save Error Map
+    error_map = v.show_error_viz(output_bounds=cfg["output_bounds"], output_size=cfg["output_size"])
+    imageio.imwrite(cfg["error_map_path"], error_map)
 
     # step 6: make gif
     print("Step 6")

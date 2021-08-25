@@ -548,3 +548,107 @@ class VirtualRaster(object):
         
      
 
+    def show_error_viz(self,  output_bounds=None, output_size=None, input_extent_type='all', max_pixel=1e10, **kwargs):
+        """Visualizes a Squared Error of virtual raster.
+
+        Args:
+            output_size (tuple of int): height, width of output
+            output_bounds (tuple of float): xmin, ymin, xmax, ymax
+                (in specified crs) bounds for the output raster,
+                this allows specification of the visualized output when
+                not using input_extent_type = 'bounds'
+
+        Returns:
+            tuple (numpy.ndarray, affine.Affine): output image and transform
+        """
+        df = self.df.loc[pd.notna(self.df['world_trans']), :].copy()
+        # parse input extent type and extent
+        if input_extent_type in ['all']:
+            xmin, ymin, xmax, ymax = df.total_bounds
+        else:
+            raise NotImplementedError
+        if df.shape[0] == 0:
+            return None, None
+        # reset index to integer positions
+        df = df.reset_index(drop=True)
+        # output_bounds override input_extent for output shape and position
+        # if not None
+        if output_bounds is not None:
+            xmin, ymin, xmax, ymax = output_bounds
+
+
+        if output_size is not None:
+            output_height, output_width = output_size
+            output_yres = (ymax - ymin) / output_height
+            output_xres = (xmax - xmin) / output_width
+
+
+        # check for file size, fail if it's too large
+        assert output_height * output_width <= max_pixel
+
+        # output transform
+        dst_transform = rasterio.transform.Affine(
+            output_xres, 0, xmin, 0, - output_yres, ymax)
+
+        # initialize the outputs array
+
+        outputs = []
+      
+        df_iterrows = tqdm.tqdm(df.iterrows()) 
+        # iterate over images
+        for i, row in df_iterrows:
+            # load images with the preprocess function
+
+            # make sure that img does not have 0's (reserved for nodata)
+
+            img, trans_relative = show_preprocess(file=row['img_file'], **kwargs)
+
+
+            # make sure that img does not have 0's (reserved for nodata)
+            img = np.clip(img, 1, None)
+            output = []
+
+            for j,band in enumerate(img):
+                print("Band Shape", band.shape)
+                dest = np.zeros((output_height, output_width))
+
+                rasterio.warp.reproject(
+                    source=band,
+                    destination=dest,
+                    src_transform=row['world_trans'] * trans_relative,
+                    src_crs=self.crs,
+                    src_nodata=None,
+                    dst_transform=dst_transform,
+                    dst_crs=self.crs,
+                    dst_nodata=0)
+
+                
+                dest_grad = cv2.Laplacian(dest,cv2.CV_16S, ksize=7)
+                
+                
+                output.append(dest_grad)
+            
+            output = np.array(output) 
+            print("Output", output.shape)
+            output = np.sum(output, axis=0)
+            print("Output 2", output.shape)
+                
+
+                
+            outputs.append(output)
+    
+        outputs = np.array(outputs)
+        
+        print("Outputs", outputs.shape)
+        
+        std_data = np.std(outputs, axis=0)
+        
+        error_map = (std_data - np.min(std_data)) / (np.max(std_data) - np.min(std_data))
+        
+        print("Error Map Shape", error_map.shape)
+   
+
+        
+        return error_map
+        
+        

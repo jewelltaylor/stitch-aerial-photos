@@ -27,8 +27,8 @@ def update_cfg(cfg,
                output_size=(4000, 4000),
                output_mode="overlay",
                hessian_threshold=100,
-               optim_n_iter=12000,
-               output_iter=[0, 2000, 4000, 6000, 8000, 10000, 11999],
+               optim_n_iter=2000,
+               output_iter=[0, 1000, 1999],
                min_inliers=15, 
                max_dist = False
                ):
@@ -43,6 +43,8 @@ def update_cfg(cfg,
     cfg["in_dir_images"] = img_dir_path
     cfg["logs_dir"] = logs_dir_path
     cfg["show_file"] = int_output_dir_path
+    
+    cfg["error_map_path"] = logs_dir_path + "/error_map.jpg"
     cfg["gif_file"] = logs_dir_path + "/" + img_dir_name + ".gif"
     cfg["gif_folder"] = results_dir_path
     cfg["out_dir_cache"] = cache_dir_path
@@ -65,8 +67,8 @@ def update_cfg(cfg,
     cfg["img_width"] = img_width 
     
     #Configure Max Distance
-    if max_dist:
-        cfg["max_dist"] = math.sqrt(img_height ** 2 + img_width ** 2) 
+    if max_dist != None:
+        cfg["max_dist"] = math.sqrt(img_height ** 2 + img_width ** 2) * max_dist
     else:
         cfg["max_dist"] = None
     return cfg
