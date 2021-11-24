@@ -1,10 +1,8 @@
-tmp
 .pytest_cache/
 __pycache__/
 .ipynb_checkpoints/
 **/._*
 cache
-data
 results/*
 logs/*
 int_output/*
