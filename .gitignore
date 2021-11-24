@@ -3,6 +3,3 @@ __pycache__/
 .ipynb_checkpoints/
 **/._*
 cache
-results/*
-logs/*
-int_output/*
