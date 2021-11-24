@@ -1,4 +1,4 @@
-# stitch-aerial-photos
+# SkyDeploy Image Stitching Algorthim
 An algorithm that handles large-scale aerial photo co-registration, based on SURF, RANSAC and PyTorch autograd. Extended base repository to accomodate RGB images, add visualization utilities and use to metadata from images to initialize image positions. 
 
 # Data 
